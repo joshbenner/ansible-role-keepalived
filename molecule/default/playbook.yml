@@ -1,0 +1,48 @@
+---
+- name: Converge
+  hosts: all
+  roles:
+    - role: ../../..
+      keepalived_global_notification_emails:
+        - foo@example.com
+        - bar@example.com
+      keepalived_global_notification_email_from: from@example.com
+      keepalived_global_smtp_server: smtp.example.com
+      keepalived_global_smtp_connect_timeout: 10
+
+      keepalived_vrrp_sync_groups:
+        VG_1:
+          group:
+            - VIP_1
+            - VIP_2
+          notify_master: /scripts/master.sh
+          notify_backup: /scripts/backup.sh
+
+      keepalived_vrrp_scripts:
+        script1:
+          script: /foo/bar.sh
+          interval: 10
+
+      keepalived_vrrp_instances:
+        VIP_1:
+          interface: "{{ ansible_default_ipv4.interface }}"
+          virtual_router_id: 51
+          priority: 100
+          auth_pass: sekrit
+          virtual_ipaddress:
+            - 127.1.0.1/24
+          track_script:
+            - script1
+
+      keepalived_virtual_servers:
+        - ip: 127.1.0.1
+          port: 80
+          lb_algo: rr
+          lb_kind: dr
+          real_servers:
+            - ip: 127.1.0.2
+              port: 80
+              check_type: tcp
+              tcp_check:
+                connect_ip: 127.1.0.2
+                connect_port: 80

@@ -1,0 +1,139 @@
+#jinja2: lstrip_blocks: True
+! {{ ansible_managed }}
+{% macro ka_bool(name, value) %}
+  {% if value %}{{ "\n  " }}{{ name }}{% endif %}
+{% endmacro %}
+
+{% macro ka_attr(name, value) %}
+  {% if value is not none %}{{ "\n  " }}{{ name }} {{ value }}{% endif %}
+{%- endmacro -%}
+
+{% macro ka_str(name, value) %}
+  {% if value is not none %}{{ "\n  " }}{{ name }} "{{ value }}"{% endif %}
+{% endmacro -%}
+
+{% macro ka_list(name, values) -%}
+  {{ name }} {
+    {% for val in values %}
+    {{ val }}
+    {% endfor %}
+  }
+{%- endmacro -%}
+
+{% macro ka_list_nullable(name, values) %}
+  {% if values %}{{ ka_list(name, values) }}{% endif %}
+{% endmacro -%}
+
+global_defs {
+  {{ ka_list_nullable('notification_email', keepalived_global_notification_emails) }}
+  {{- ka_attr('notification_email_from', keepalived_global_notification_email_from) }}
+  {{- ka_attr('smtp_server', keepalived_global_smtp_server) }}
+  {{- ka_attr('smtp_connect_timeout', keepalived_global_smtp_connect_timeout) }}
+}
+
+{% for group_name, group in keepalived_vrrp_sync_groups.items() %}
+vrrp_sync_group {{ group_name }} {
+  {{ ka_list('group', group.group) }}
+  {{- ka_str('notify_master', group.notify_master|d(None)) }}
+  {{- ka_str('notify_backup', group.notify_backup|d(None)) }}
+  {{- ka_str('notify_fault', group.notify_fault|d(None)) }}
+}
+{% endfor %}
+
+{% for script_name, script in keepalived_vrrp_scripts.items() %}
+vrrp_script {{ script_name }} {
+  {{- ka_str('script', script.script) }}
+  {{- ka_attr('interval', script.interval) }}
+  {{- ka_attr('fall', script.fall|d(None)) }}
+  {{- ka_attr('rise', script.rise|d(None)) }}
+  {{- ka_attr('weight', script.weight|d(None)) }}
+}
+{% endfor %}
+
+{% for instance_name, instance in keepalived_vrrp_instances.items() %}
+vrrp_instance {{ instance_name }} {
+  {{- ka_attr('state', instance.state|d('BACKUP')) }}
+  {{- ka_attr('interface', instance.interface) }}
+  {{- ka_attr('virtual_router_id', instance.virtual_router_id) }}
+  {{- ka_attr('priority', instance.priority) }}
+  {{- ka_attr('advert_int', instance.advert_int|d(None)) }}
+  {{- ka_attr('garp_master_delay', instance.garp_master_delay|d(None)) }}
+  {{- ka_attr('smtp_alert', instance.smtp_alert|d(None)) }}
+  {{- ka_attr('nopreempt', instance.nopreempt|d(None)) }}
+  {{- ka_attr('preempt_delay', instance.preempt_delay|d(None)) }}
+  authentication {
+    auth_type PASS
+    auth_pass {{ instance.auth_pass }}
+  }
+  virtual_ipaddress {
+    {% for ip in instance.virtual_ipaddress %}
+    {{ ip }} dev {{ instance.interface }} label {{ instance.interface }}:{{ instance_name }}
+    {% endfor %}
+  }
+  {{ ka_list_nullable('track_script', instance.track_script|d(None)) }}
+  {{- ka_str('notify_master', instance.notify_master|d(None)) }}
+  {{- ka_str('notify_backup', instance.notify_backup|d(None)) }}
+  {{- ka_str('notify_fault', instance.notify_fault|d(None)) }}
+}
+{% endfor %}
+
+{% for vs in keepalived_virtual_servers %}
+virtual_server {{ vs.ip }} {{ vs.port }} {
+  {{- ka_attr('delay_loop', vs.delay_loop|d(None)) }}
+  {{- ka_bool('ops', vs.ops|d(None)) }}
+  {{- ka_attr('lb_algo', vs.lb_algo) }}
+  {{- ka_attr('lb_kind', vs.lb_kind) }}
+  {{- ka_attr('persistence_timeout', vs.persistence_timeout|d(None)) }}
+  {{- ka_attr('persistence_granularity', vs.persistence_granularity|d(None)) }}
+  {{- ka_bool('alpha', vs.alpha|d(None)) }}
+  {{- ka_bool('omega', vs.omega|d(None)) }}
+  {{- ka_attr('quorum', vs.quorum|d(None)) }}
+  {{- ka_attr('hysteresis', vs.hysteresis|d(None)) }}
+  {{- ka_str('quorum_up', vs.quorum_up|d(None)) }}
+  {{- ka_str('quorum_down', vs.quorum_down|d(None)) }}
+  {{- ka_attr('virtualhost', vs.virtualhost|d(None)) }}
+  {{- ka_attr('protocol', vs.protocol|d(None)) }}
+  {{- ka_attr('sorry_server', vs.sorry_server|d(None)) }}
+  {{- ka_bool('sorry_server_inhibit', vs.sorry_server_inhibit|d(None)) }}
+  {% for rs in vs.real_servers %}
+  real_server {{ rs.ip }} {{ rs.port }} {
+    {{- ka_attr('weight', rs.weight|d(None)) | indent(2) }}
+    {{- ka_bool('inhibit_on_failure', rs.inhibit_on_failure|d(None)) | indent(2) }}
+    {{- ka_str('notify_up', rs.notify_up|d(None)) | indent(2) }}
+    {{- ka_str('notify_down', rs.notify_down|d(None)) | indent(2) }}
+    {% if rs.check_type == 'tcp' %}
+    TCP_CHECK {
+      {{- ka_attr('connect_ip', rs.tcp_check.connect_ip|d(None)) | indent(4) }}
+      {{- ka_attr('connect_port', rs.tcp_check.connect_port|d(None)) | indent(4) }}
+      {{- ka_attr('connect_timeout', rs.tcp_check.connect_timeout|d(None)) | indent(4) }}
+      {{- ka_attr('bindto', rs.tcp_check.bindto|d(None)) | indent(4) }}
+      {{- ka_attr('bind_port', rs.tcp_check.bind_port|d(None)) | indent(4) }}
+      {{- ka_attr('warmup', rs.tcp_check.warmup|d(None)) | indent(4) }}
+    }
+    {% elif rs.check_type in ['http', 'ssl'] %}
+    {%- set check = rs[rs.check_type+'_get'] -%}
+    {{ rs.check_type|upper }}_GET {
+      url {
+        path {{ check.path }}
+        status_code {{ check.status_code|d(200) }}
+        {{- ka_attr('digest', check.digest|d(None)) | indent(4) }}
+      }
+      {{- ka_attr('connect_ip', rs.tcp_check.connect_ip|d(None)) | indent(4) }}
+      {{- ka_attr('connect_port', rs.tcp_check.connect_port|d(None)) | indent(4) }}
+      {{- ka_attr('connect_timeout', rs.tcp_check.connect_timeout|d(None)) | indent(4) }}
+      {{- ka_attr('bindto', rs.tcp_check.bindto|d(None)) | indent(4) }}
+      {{- ka_attr('bind_port', rs.tcp_check.bind_port|d(None)) | indent(4) }}
+      {{- ka_attr('warmup', rs.tcp_check.warmup|d(None)) | indent(4) }}
+    }
+    {% elif rs.check_type == 'misc' %}
+    MISC_CHECK {
+      misc_path "{{ rs.misc_check.misc_path }}"
+      misc_timeout {{ rs.misc_check.misc_timeout|d(5) }}
+      {{- ka_attr('warmup', rs.misc_check.warmup|d(None)) | indent(4) }}
+      {{- ka_bool('misc_dynamic', rs.misc_check.misc_dynamic|d(None)) | indent(4) }}
+    }
+    {% endif %}
+  }
+  {% endfor %}
+}
+{% endfor %}

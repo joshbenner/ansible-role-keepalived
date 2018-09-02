@@ -1,0 +1,25 @@
+---
+- name: Install keepalived
+  package:
+    name: keepalived
+    state: present
+
+- name: Configure keepalived
+  tags: [config]
+  template:
+    src: templates/keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=
+  notify: restart keepalived
+
+# Avoid start+restart on first install
+- name: Flush handlers
+  meta: flush_handlers
+
+- name: Start keepalived service
+  service:
+    name: keepalived
+    state: started
+    enabled: true

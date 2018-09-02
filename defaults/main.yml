@@ -1,0 +1,98 @@
+---
+# For configuration detail, see: http://manpages.ubuntu.com/manpages/xenial/en/man5/keepalived.conf.5.html
+
+keepalived_global_notification_emails: []
+keepalived_global_notification_email_from: ~
+keepalived_global_smtp_server: ~
+keepalived_global_smtp_connect_timeout: ~
+
+keepalived_vrrp_sync_groups: {}
+# GROUP_1:
+#   group:
+#     - VIP_1
+#     - VIP_2
+#   notify_master: /path/to/script.sh
+#   notify_backup: /path/to/script.sh
+#   notify_fault: /path/to/script.sh
+
+keepalived_vrrp_instances: {}
+# VIP_1:
+#   state: MASTER
+#   interface: ens18
+#   virtual_router_id: 51
+#   priority: 150
+#   advert_int: 1
+#   garp_master_delay: 5
+#   smtp_alert: false
+#   nopreempt: false
+#   preempt_delay: 300
+#   auth_pass: sekrit
+#   virtual_ipaddress:
+#     - 1.2.3.5/24
+#     - 1.2.3.6/24
+#   track_script:
+#     - SCRIPT1
+#   notify_master: /path/to/script.sh
+#   notify_backup: /path/to/script.sh
+#   notify_fault: /path/to/script.sh
+
+keepalived_vrrp_scripts: {}
+# SCRIPT1:
+#   script: /path/to/script.sh
+#   interval: 10
+#   fall: 2
+#   rise: 5
+#   timeout: 5
+#   weight: 2
+
+keepalived_virtual_servers: []
+# - ip: 10.0.0.1
+#   port: 80
+#   delay_loop: 5
+#   ops: false
+#   lb_algo: rr
+#   lb_kind: NAT
+#   persistence_timeout: 30
+#   persistence_granularity: 255.255.255.255
+#   alpha: false
+#   omega: false
+#   quorum: 1
+#   hysteresis: 0
+#   quorum_up: /path/to/script.sh
+#   quorum_down: /path/to/script.sh
+#   virtualhost: www.example.com
+#   protocol: TCP
+#   sorry_server: 1.2.3.4
+#   sorry_server_inhibit: false
+#   real_servers:
+#     - ip: 10.0.0.2
+#       port: 80
+#       weight: 1
+#       inhibit_on_failure: false
+#       notify_up: /path/to/script.sh
+#       notify_down: /path/to/script.sh
+#       check_type: http
+#       tcp_check:
+#         connect_ip: 1.2.3.4
+#         connect_port: 80
+#         connect_timeout: 5
+#         bindto: 1.2.3.5
+#         bind_port: 1234
+#         warmup: 5
+#       misc_check:
+#         misc_path: /path/to/script.sh
+#         misc_timeout: 10
+#         warmup: 5
+#         misc_dynamic: false
+#       http_get:
+#         path: /foo
+#         digest: 9b3a0c85a887a256d6939da88aabd8cd
+#         status_code: 200
+#         nb_get_retry: 1
+#         delay_before_retry: 1
+#         connect_ip: 1.2.3.4
+#         connect_port: 80
+#         bindto: 1.2.3.5
+#         bind_port: 1234
+#         connect_timeout: 5
+#         warmup: 5
